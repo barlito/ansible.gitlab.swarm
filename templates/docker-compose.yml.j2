@@ -1,0 +1,27 @@
+version: "3.6"
+
+services:
+
+  gitlab:
+    image: {{ gitlab_image }}
+    volumes:
+{% for volume in gitlab_volumes %}
+      - {{ volume }}
+{% endfor %}
+    deploy:
+      labels:
+{% for label in gitlab_labels %}
+        - {{ label }}
+{% endfor %}
+    networks:
+      - {{ traefik_stack_name }}_{{ traefik_network }}
+
+  gitlab-runner:
+    image: {{ gitlab_runner_image }}
+    deploy:
+      mode: replicated
+      replicas: {{ gitlab_runner_replicas }}
+
+networks:
+  {{ traefik_stack_name }}_{{ traefik_network }}:
+    external: true

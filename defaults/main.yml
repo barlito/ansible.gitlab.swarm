@@ -1,0 +1,19 @@
+---
+
+gitlab_stack_name: "gitlab"
+
+gitlab_image: 'gitlab/gitlab-ce'
+gitlab_runner_image: 'gitlab/gitlab-runner:alpine'
+gitlab_runner_replicas: 4
+
+gitlab_ports:
+  - "2222:22"
+
+gitlab_dir: /etc/gitlab
+
+gitlab_volumes:
+  - "{{ gitlab_dir }}/data:/var/opt/gitlab"
+  - "{{ gitlab_dir }}/logs:/var/log/gitlab"
+  - "{{ gitlab_dir }}/config:/etc/gitlab"
+
+gitlab_labels: {}
