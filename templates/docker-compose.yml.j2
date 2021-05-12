@@ -4,6 +4,9 @@ services:
 
   gitlab:
     image: {{ gitlab_image }}
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url '{{ gitlab_external_url }}'
     volumes:
 {% for volume in gitlab_volumes %}
       - {{ volume }}
@@ -15,12 +18,6 @@ services:
 {% endfor %}
     networks:
       - {{ traefik_stack_name }}_{{ traefik_network }}
-
-  gitlab-runner:
-    image: {{ gitlab_runner_image }}
-    deploy:
-      mode: replicated
-      replicas: {{ gitlab_runner_replicas }}
 
 networks:
   {{ traefik_stack_name }}_{{ traefik_network }}:

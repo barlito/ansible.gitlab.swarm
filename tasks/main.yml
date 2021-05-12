@@ -1,27 +1,76 @@
 ---
 
-- name: 'gitlab : create gitlab directories'
+- name: 'gitlab : Create gitlab directories (755)'
   become: true
   file:
     path: '{{ gitlab_dir }}/{{ item }}'
     state: directory
     owner: root
     group: root
-    mode: 0550
+    mode: 0755
   loop:
     - ""
     - "data"
     - "logs"
+    - "gitlab-runner"
+    - "gitlab-runner/config"
+
+- name: 'gitlab : Create gitlab directories (775)'
+  become: true
+  file:
+    path: '{{ gitlab_dir }}/{{ item }}'
+    state: directory
+    owner: root
+    group: root
+    mode: 0775
+  loop:
     - "config"
 
-- name: "gitlab : build gitlab docker-compose"
+- name: "gitlab : Build gitlab docker-compose"
   template:
     src: "docker-compose.yml.j2"
     dest: "{{ gitlab_dir }}/docker-compose.yml"
 
-- name: 'gitlab : deploy gitlab stack from a compose file'
+# prevent 502 gitlab error
+#- name: 'gitlab : Make sure gitlab stack is removed before deploy'
+#  docker_stack:
+#    state: absent
+#    name: "{{ gitlab_stack_name }}"
+
+- name: 'gitlab : Deploy gitlab stack from a compose file'
   docker_stack:
     state: present
     name: "{{ gitlab_stack_name }}"
     compose:
       - "{{ gitlab_dir }}/docker-compose.yml"
+
+- name: "gitlab : Pause role execution to get the gitlab runner registration token"
+  pause:
+    prompt: "Please enter the gitlab runner registration token"
+    echo: yes
+  register: registration_token
+  when: gitlab_runner_registration_token is not defined
+
+- set_fact:
+    gitlab_runner_registration_token: "{{ registration_token.user_input }}"
+  when: gitlab_runner_registration_token is not defined
+
+- name: Waits for port 8000 of any IP to close active connections, don't start checking for 10 seconds
+  wait_for:
+    host: gitlab_gitlab
+    port: 80
+
+- name: "Create gitlab runner container"
+  docker_container:
+    name: "gitlab_runner_{{ item }}"
+    image: "gitlab/gitlab-runner:alpine"
+    entrypoint: ""
+    command: /usr/bin/dumb-init /entrypoint register --non-interactive --url "http://gitlab_gitlab" --registration-token "{{ gitlab_runner_registration_token }}" --description "Runner {{ item }}" --executor "docker" --docker-image ubuntu:20.04 && /usr/bin/dumb-init /entrypoint run --user=gitlab-runner --working-directory=/home/gitlab-runner
+    volumes:
+      - "{{ gitlab_dir }}/gitlab-runner/config:/etc/gitlab-runner"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - name: "{{ traefik_stack_name }}_{{ traefik_network }}"
+  with_sequence: count=4
+  vars:
+    ansible_python_interpreter: "/usr/bin/env python3-docker"

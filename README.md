@@ -1,3 +1,8 @@
+This repo is stopped, i'll won't use it anymore, too hard to setup runners for self hosted gitlab for me  .
+
+Maybe i'll just make a setup for only runners, private gitlab does not seems realy usefull for me at now.
+
+
 Ansible Gitlab Swarm
 =========
 
